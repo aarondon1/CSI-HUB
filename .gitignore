@@ -1,0 +1,16 @@
+#python virtual environment
+.venv
+
+#api keys
+
+# sqlite database file
+db.sqlite3
+
+# .DS_Store
+.DS_Store
+
+# __pycache__ directories
+__pycache__/
+
+# Python bytecode files
+*.pyc
