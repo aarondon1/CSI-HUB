@@ -12,6 +12,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+import psycopg2
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,10 +27,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-yo2_z%&09dy67u&0#(t&9^psvqt1vd5q3!o=5r%2ful#^qa9nf'
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("Missing SECRET_KEY in environment variables")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True  # Set to False in production
+
+# Allowed hosts configuration - need to be configured for production to only allow specific hosts:
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# SECURITY WARNING: define the correct hosts in production!
 
 ALLOWED_HOSTS = []
 
@@ -37,7 +51,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
     'backend',  # Custom app for the backend
+    'rest_framework',  # Django REST framework for API development
 ]
 
 MIDDLEWARE = [
@@ -73,10 +89,23 @@ WSGI_APPLICATION = 'DolphinFinder_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
+# Get environment variables
+host_ID = os.getenv("host_ID")
+supabase_password = os.getenv("supabase_password")
+
+# Check if the required environment variables are set, if not, raise an error
+if not host_ID or not supabase_password:
+    raise ValueError("Missing required environment variables in the .env file: host_ID or supabase_password")
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',  # PostgreSQL database engine
+        'HOST': f'db.{host_ID}.supabase.co',  # Supabase database host
+        'NAME': 'postgres',  # Database name
+        'USER': 'postgres',  # Database user
+        'PASSWORD': supabase_password,  # Database password
+        'PORT': '5432',  # Default PostgreSQL port
     }
 }
 
@@ -121,3 +150,27 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+
+# ignore this for now:
+
+# # ensures cookies are only sent over HTTPS connections, preventing interception in plaintext
+# CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = True
+
+# # redirect all HTTP traffic to HTTPS, ensuring secure connections
+# # uncomment this line when deploying to production, for local development, you can keep it commented
+# #SECURE_SSL_REDIRECT = True
+
+
+# # HTTPS and secure cookie settings
+# if not DEBUG:  # Only enforce these settings in production
+#     CSRF_COOKIE_SECURE = True
+#     SESSION_COOKIE_SECURE = True
+#     SECURE_SSL_REDIRECT = True
+# else:  # Disable these settings in development
+#     CSRF_COOKIE_SECURE = False
+#     SESSION_COOKIE_SECURE = False
+#     SECURE_SSL_REDIRECT = False

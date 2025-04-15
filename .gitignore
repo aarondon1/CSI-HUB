@@ -1,16 +1,45 @@
-#python virtual environment
+# Python virtual environment
 .venv
 
-#api keys
+# Environment variables
+.env
 
-# sqlite database file
+# SQLite database
 db.sqlite3
 
-# .DS_Store
-.DS_Store
-
-# __pycache__ directories
+# Python cache
 __pycache__/
-
-# Python bytecode files
 *.pyc
+
+# Flutter/Dart specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+build/
+*.iml
+*.packages
+*.pub-cache
+pubspec.lock
+
+# Platform-specific build files
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/Flutter/
+macos/Flutter/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# Sensitive files
+key.properties
+google-services.json
+GoogleService-Info.plist
+
+# IDE-specific
+.idea/
+.vscode/
+
+# Miscellaneous
+*.log
+.DS_Store
