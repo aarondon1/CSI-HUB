@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Profile, Project
+from .models import Profile, Project, JoinRequest
 
 # This file contains the serializers for the Profile and Project models.
 
@@ -16,4 +16,11 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
+        fields = '__all__'
+        
+
+# The ProjectSerializer is used to serialize the Project model, which contains Project Project information.
+class JoinRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JoinRequest
         fields = '__all__'

@@ -8,4 +8,7 @@ urlpatterns = [
     path('create-project/', views.CreateProject.as_view()),
     path('homepage/', views.HomePageView.as_view()),
     path('user-projects/<str:user_id>/', views.UserProjectsView.as_view()),
-]
+    path('join-request/', views.CreateJoinRequest.as_view()),
+    path('join-request/<str:user_id>/',views.ReceivedJoinRequests.as_view()),
+    path('join-request/<int:request_id>/status/', views.UpdateJoinRequestStatus.as_view()),
+]   
