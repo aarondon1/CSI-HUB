@@ -1,69 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:icons_plus/icons_plus.dart';
-import 'package:dolphin_finder/screens/actsignin_screen.dart';
+import 'package:dolphin_finder/screens/signup_screen.dart';
 import 'package:dolphin_finder/widgets/custom_scaffold.dart';
 import 'package:dolphin_finder/supabase/supabase_client.dart';
 import 'package:dolphin_finder/screens/homescreen.dart';
+import 'package:dolphin_finder/screens/forgetpassword_screen.dart';
 
 
-
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+class ActsigninScreen extends StatefulWidget {
+  const ActsigninScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<ActsigninScreen> createState() => _ActsigninScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
-  final _formSignupKey = GlobalKey<FormState>();
+class _ActsigninScreenState extends State<ActsigninScreen> {
+  final _formSignInKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController fullNameController = TextEditingController();
-  bool agreePersonalData = true;
+  bool rememberPassword = true;
 
-  void _signUpWithEmail() async {
+  void _signInWithEmail() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    if (_formSignupKey.currentState!.validate() && agreePersonalData) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
-
-
-    /* if (_formSignupKey.currentState!.validate() && agreePersonalData) {
+    if (_formSignInKey.currentState!.validate() && rememberPassword) {
       try {
-        final response = await SupabaseManager.client.auth.signUp(
+        final response = await SupabaseManager.client.auth.signInWithPassword(
           email: email,
           password: password,
         );
 
         if (response.user != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sign up successful!')),
+            const SnackBar(content: Text('Login successful!')),
           );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
 
+          if (response.user != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Login successful!')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          }
+
+        }
       } catch (error) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign up failed: $error')),
+          SnackBar(content: Text('Login failed: $error')),
         );
       }
-    } else if (!agreePersonalData) {
+    } else if (!rememberPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'Please agree to the processing of personal data')),
+          content: Text('Please agree to the processing of personal data'),
+        ),
       );
-
-    }*/
-
+    }
   }
 
   @override
@@ -88,12 +83,12 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               child: SingleChildScrollView(
                 child: Form(
-                  key: _formSignupKey,
+                  key: _formSignInKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        'Get Started',
+                        'Welcome back',
                         style: TextStyle(
                           fontSize: 30.0,
                           fontWeight: FontWeight.w900,
@@ -102,27 +97,12 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 40.0),
                       TextFormField(
-                        controller: fullNameController,
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Please enter Full name' : null,
-                        decoration: InputDecoration(
-                          label: const Text('Full Name'),
-                          hintText: 'Enter Full Name',
-                          hintStyle: const TextStyle(color: Colors.black26),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 25.0),
-                      TextFormField(
                         controller: emailController,
                         validator: (value) =>
                         value == null || value.isEmpty ? 'Please enter Email' : null,
                         decoration: InputDecoration(
                           label: const Text('Email'),
                           hintText: 'Enter Email',
-                          hintStyle: const TextStyle(color: Colors.black26),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -138,7 +118,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         decoration: InputDecoration(
                           label: const Text('Password'),
                           hintText: 'Enter Password',
-                          hintStyle: const TextStyle(color: Colors.black26),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -146,25 +125,36 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 25.0),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Checkbox(
-                            value: agreePersonalData,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                agreePersonalData = value!;
-                              });
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: rememberPassword,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    rememberPassword = value!;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Remember me',
+                                style: TextStyle(color: Colors.black45),
+                              ),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const ForgetpasswordScreen()),);
                             },
-                            //activeColor: lightColorScheme.primary,
-                          ),
-                          const Text(
-                            'I agree to the processing of ',
-                            style: TextStyle(color: Colors.black45),
-                          ),
-                          Text(
-                            'Personal data',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                             // color: lightColorScheme.primary,
+                            child: Text(
+                              'Forget password?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                //color: lightColorScheme.primary,
+                              ),
                             ),
                           ),
                         ],
@@ -173,36 +163,26 @@ class _SignupScreenState extends State<SignupScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _signUpWithEmail,
-                          child: const Text('Sign up'),
+                          onPressed: _signInWithEmail,
+                          child: const Text('Log In'),
                         ),
                       ),
-                      const SizedBox(height: 30.0),
+                      const SizedBox(height: 25.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Expanded(
-                            child: Divider(
-                              thickness: 0.7,
-                              color: Colors.grey.withOpacity(0.5),
-                            ),
-                          ),
+                          Expanded(child: Divider(thickness: 0.7, color: Colors.grey.withOpacity(0.5))),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
-                              'Sign up with',
+                              'Sign in with',
                               style: TextStyle(color: Colors.black45),
                             ),
                           ),
-                          Expanded(
-                            child: Divider(
-                              thickness: 0.7,
-                              color: Colors.grey.withOpacity(0.5),
-                            ),
-                          ),
+                          Expanded(child: Divider(thickness: 0.7, color: Colors.grey.withOpacity(0.5))),
                         ],
                       ),
-                      const SizedBox(height: 30.0),
+                      const SizedBox(height: 25.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -217,20 +197,18 @@ class _SignupScreenState extends State<SignupScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text(
-                            'Already have an account? ',
+                            'Don\'t have an account? ',
                             style: TextStyle(color: Colors.black45),
                           ),
                           GestureDetector(
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (e) => const ActsigninScreen(),
-                                ),
+                                MaterialPageRoute(builder: (e) => const SignupScreen()),
                               );
                             },
                             child: Text(
-                              'Sign in',
+                              'Sign up',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 //color: lightColorScheme.primary,
@@ -251,3 +229,5 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
+
+

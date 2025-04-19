@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "96892609706",
+    "project_id": "dolphin-finder",
+    "storage_bucket": "dolphin-finder.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:96892609706:android:acd695d4c760ac5ba35cd3",
+        "android_client_info": {
+          "package_name": "com.example.dolphin_finder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeV3cK3ZlIAYKrBXm8qg-VJKu2u5Jzn1o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

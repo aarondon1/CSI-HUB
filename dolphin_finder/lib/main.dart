@@ -1,7 +1,9 @@
 import 'package:dolphin_finder/screens/signin_screen.dart';
+import 'package:dolphin_finder/supabase/supabase_client.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  await SupabaseManager.init();
   runApp(const MyApp());
 }
 
@@ -32,6 +34,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+
       home: const SigninScreen(),
     );
   }
