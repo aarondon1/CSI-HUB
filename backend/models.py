@@ -2,6 +2,7 @@ from django.db import models
 
 class Profile(models.Model):
     user_id = models.CharField(max_length=255, unique=True) # Supabase UID
+    email = models.EmailField(unique=True, blank=True, null=True) # this is optional, as the user may not have an email associated with their profile
     username = models.CharField(max_length=255)
     bio = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

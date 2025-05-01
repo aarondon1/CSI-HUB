@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-
+import jwt
 import psycopg2
 import os
 from dotenv import load_dotenv
@@ -26,6 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
+if not SUPABASE_JWT_SECRET:
+    raise ValueError("Missing SUPABASE_JWT_SECRET")
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -39,7 +45,7 @@ DEBUG = True  # Set to False in production
 # ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 # SECURITY WARNING: define the correct hosts in production!
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.0.2.2']
 
 
 # Application definition
@@ -54,6 +60,7 @@ INSTALLED_APPS = [
     
     'backend',  # Custom app for the backend
     'rest_framework',  # Django REST framework for API development
+    'corsheaders',  # CORS headers for cross-origin requests
 ]
 
 MIDDLEWARE = [
@@ -64,6 +71,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware
 ]
 
 ROOT_URLCONF = 'DolphinFinder_project.urls'
@@ -151,6 +159,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+CORS_ALLOW_ALL_ORIGINS = True # Allow all origins for CORS requests
 
 
 
