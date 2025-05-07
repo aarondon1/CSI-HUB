@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:icons_plus/icons_plus.dart';
 import 'package:dolphin_finder/screens/signup_screen.dart';
 import 'package:dolphin_finder/widgets/custom_scaffold.dart';
 import 'package:dolphin_finder/supabase/supabase_client.dart';
 import 'package:dolphin_finder/screens/homescreen.dart';
 import 'package:dolphin_finder/screens/forgetpassword_screen.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 class ActsigninScreen extends StatefulWidget {
@@ -35,17 +38,10 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login successful!')),
           );
-
-          if (response.user != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Login successful!')),
-            );
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          }
-
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
         }
       } catch (error) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -57,6 +53,19 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
         const SnackBar(
           content: Text('Please agree to the processing of personal data'),
         ),
+      );
+    }
+  }
+
+  void _signInWithProvider() async {
+    try {
+      await SupabaseManager.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: dotenv.env['SUPABASE_URL2'],
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google sign-in failed: $e')),
       );
     }
   }
@@ -73,7 +82,7 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
           Expanded(
             flex: 7,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(25.0, 50.0, 25.0, 20.0),
+              padding: const EdgeInsets.fromLTRB(25.0, 50.0, 25.0, 0.0),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
@@ -87,12 +96,11 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'Welcome back',
                         style: TextStyle(
                           fontSize: 30.0,
                           fontWeight: FontWeight.w900,
-                          //color: lightColorScheme.primary,
                         ),
                       ),
                       const SizedBox(height: 40.0),
@@ -147,14 +155,12 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ForgetpasswordScreen()),);
+                                MaterialPageRoute(builder: (context) => const ForgetpasswordScreen()),
+                              );
                             },
-                            child: Text(
+                            child: const Text(
                               'Forget password?',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                //color: lightColorScheme.primary,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -175,7 +181,7 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
-                              'Sign in with',
+                              'Or sign in with Google',
                               style: TextStyle(color: Colors.black45),
                             ),
                           ),
@@ -183,14 +189,28 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
                         ],
                       ),
                       const SizedBox(height: 25.0),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          //Logo(Logos.facebook_f),
-                          //Logo(Logos.twitter),
-                          Logo(Logos.google),
-                          Logo(Logos.apple),
-                        ],
+                      Center(
+                        child: GestureDetector(
+                          onTap: _signInWithProvider,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Logo(Logos.google),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Sign in with Google',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 25.0),
                       Row(
@@ -207,12 +227,9 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
                                 MaterialPageRoute(builder: (e) => const SignupScreen()),
                               );
                             },
-                            child: Text(
+                            child: const Text(
                               'Sign up',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                //color: lightColorScheme.primary,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -229,5 +246,3 @@ class _ActsigninScreenState extends State<ActsigninScreen> {
     );
   }
 }
-
-

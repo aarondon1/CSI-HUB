@@ -1,11 +1,16 @@
 import 'package:dolphin_finder/screens/signin_screen.dart';
 import 'package:dolphin_finder/supabase/supabase_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await SupabaseManager.init();
   runApp(const MyApp());
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

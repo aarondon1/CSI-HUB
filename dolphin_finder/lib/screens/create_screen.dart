@@ -3,9 +3,16 @@ import 'package:dolphin_finder/screens/homescreen.dart';
 import 'package:dolphin_finder/screens/profile_screen.dart';
 import 'package:dolphin_finder/screens/settings_screen.dart';
 import 'package:dolphin_finder/widgets/customnavbutton.dart';
+import '../supabase/supabase_client.dart';
+import 'package:flutter/material.dart';
+import 'package:dolphin_finder/screens/homescreen.dart';
+import 'package:dolphin_finder/screens/profile_screen.dart';
+import 'package:dolphin_finder/screens/settings_screen.dart';
+import 'package:dolphin_finder/widgets/customnavbutton.dart';
+import '../supabase/supabase_client.dart';
 
 class CreateScreen extends StatefulWidget {
-  const CreateScreen ({super.key});
+  const CreateScreen({super.key});
 
   @override
   State<CreateScreen> createState() => _CreateScreen();
@@ -15,20 +22,13 @@ class _CreateScreen extends State<CreateScreen> {
   static const Color appBlue = Color(0xFF4A90E2);
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-
-  final List<String> roles = [
-    "UI/UX Designer",
-    "Frontend Dev",
-    "Backend Dev",
-    "ML Engineer",
-    "Project Manager",
-    "Other"
-  ];
+  final List<String> roles = ["UI/UX Designer", "Frontend Dev", "Backend Dev", "ML Engineer", "Project Manager", "Other"];
   final Set<String> selectedRoles = {};
 
-  void _postProject() {
+  void _postProject() async {
     final title = titleController.text.trim();
     final description = descriptionController.text.trim();
+    final userId = SupabaseManager.client.auth.currentUser?.id;
 
     if (title.isEmpty || description.isEmpty || selectedRoles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -37,14 +37,41 @@ class _CreateScreen extends State<CreateScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Project posted!")),
-    );
-    titleController.clear();
-    descriptionController.clear();
-    setState(() {
-      selectedRoles.clear();
-    });
+    try {
+      await SupabaseManager.client.from('posts').insert({
+        'title': title,
+        'description': description,
+        'roles_needed': selectedRoles.toList(),
+        'created_by': userId,
+      });
+
+      titleController.clear();
+      descriptionController.clear();
+      setState(() {
+        selectedRoles.clear();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Project posted successfully!")),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error posting project: $e")),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    super.dispose();
   }
 
   @override
@@ -138,9 +165,10 @@ class _CreateScreen extends State<CreateScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 1),
-
-
+      bottomNavigationBar: const CustomNavButton(currentIndex: 1),
     );
   }
 }
+
+
+

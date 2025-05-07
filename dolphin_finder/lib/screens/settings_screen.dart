@@ -5,13 +5,19 @@ import 'package:dolphin_finder/screens/profile_screen.dart';
 import 'package:dolphin_finder/screens/create_screen.dart';
 import 'package:dolphin_finder/widgets/customnavbutton.dart';
 
+import '../supabase/supabase_client.dart';
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   static const Color appBlue = Color(0xFF4A90E2);
 
-  void _logout(BuildContext context) {
-    // TODO: Replace with actual logout logic
+  Future<void> _logout(BuildContext context) async {
+    await SupabaseManager.client.auth.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const SigninScreen()),
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("You have been logged out.")),
     );
@@ -47,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
-        bottomNavigationBar: const CustomBottomNav(currentIndex: 2),
+        bottomNavigationBar: const CustomNavButton(currentIndex: 4),
     );
   }
 

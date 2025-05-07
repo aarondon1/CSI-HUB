@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:dolphin_finder/screens/actsignin_screen.dart';
+import 'package:dolphin_finder/widgets/custom_scaffold.dart';
+
+import '../supabase/supabase_client.dart';
+
+import 'package:flutter/material.dart';
 import 'package:icons_plus/icons_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dolphin_finder/screens/actsignin_screen.dart';
 import 'package:dolphin_finder/widgets/custom_scaffold.dart';
 import 'package:dolphin_finder/supabase/supabase_client.dart';
-import 'package:dolphin_finder/screens/homescreen.dart';
-
-
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -24,16 +30,9 @@ class _SignupScreenState extends State<SignupScreen> {
   void _signUpWithEmail() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
+    final name = fullNameController.text.trim();
 
     if (_formSignupKey.currentState!.validate() && agreePersonalData) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
-
-
-    /* if (_formSignupKey.currentState!.validate() && agreePersonalData) {
       try {
         final response = await SupabaseManager.client.auth.signUp(
           email: email,
@@ -41,15 +40,24 @@ class _SignupScreenState extends State<SignupScreen> {
         );
 
         if (response.user != null) {
+          await SupabaseManager.client.from('users_profile').insert({
+            'id': response.user!.id,
+            'name': name,
+            'email': email,
+          });
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Sign up successful!')),
           );
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(builder: (_) => const ActsigninScreen()),
           );
         }
-
+      } on AuthException catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
       } catch (error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sign up failed: $error')),
@@ -57,13 +65,22 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } else if (!agreePersonalData) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Please agree to the processing of personal data')),
+        const SnackBar(content: Text('Please agree to the processing of personal data')),
       );
+    }
+  }
 
-    }*/
-
+  void _signUpWithProvider() async {
+    try {
+      await SupabaseManager.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: dotenv.env['SUPABASE_URL2'],
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google sign-up failed: $e')),
+      );
+    }
   }
 
   @override
@@ -78,7 +95,7 @@ class _SignupScreenState extends State<SignupScreen> {
           Expanded(
             flex: 7,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(25.0, 50.0, 25.0, 20.0),
+              padding: const EdgeInsets.fromLTRB(25.0, 50.0, 25.0, 0.0),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
@@ -92,12 +109,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'Get Started',
                         style: TextStyle(
                           fontSize: 30.0,
                           fontWeight: FontWeight.w900,
-                          //color: lightColorScheme.primary,
                         ),
                       ),
                       const SizedBox(height: 40.0),
@@ -154,18 +170,14 @@ class _SignupScreenState extends State<SignupScreen> {
                                 agreePersonalData = value!;
                               });
                             },
-                            //activeColor: lightColorScheme.primary,
                           ),
                           const Text(
                             'I agree to the processing of ',
                             style: TextStyle(color: Colors.black45),
                           ),
-                          Text(
+                          const Text(
                             'Personal data',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                             // color: lightColorScheme.primary,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -177,40 +189,44 @@ class _SignupScreenState extends State<SignupScreen> {
                           child: const Text('Sign up'),
                         ),
                       ),
-                      const SizedBox(height: 30.0),
+                      const SizedBox(height: 25.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Expanded(
-                            child: Divider(
-                              thickness: 0.7,
-                              color: Colors.grey.withOpacity(0.5),
-                            ),
-                          ),
+                          Expanded(child: Divider(thickness: 0.7, color: Colors.grey.withOpacity(0.5))),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
-                              'Sign up with',
+                              'Or sign up with Google',
                               style: TextStyle(color: Colors.black45),
                             ),
                           ),
-                          Expanded(
-                            child: Divider(
-                              thickness: 0.7,
-                              color: Colors.grey.withOpacity(0.5),
-                            ),
-                          ),
+                          Expanded(child: Divider(thickness: 0.7, color: Colors.grey.withOpacity(0.5))),
                         ],
                       ),
-                      const SizedBox(height: 30.0),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          //Logo(Logos.facebook_f),
-                          //Logo(Logos.twitter),
-                          Logo(Logos.google),
-                          Logo(Logos.apple),
-                        ],
+                      const SizedBox(height: 25.0),
+                      Center(
+                        child: GestureDetector(
+                          onTap: _signUpWithProvider,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Logo(Logos.google),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Sign up with Google',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 25.0),
                       Row(
@@ -229,12 +245,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                               );
                             },
-                            child: Text(
+                            child: const Text(
                               'Sign in',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                //color: lightColorScheme.primary,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],

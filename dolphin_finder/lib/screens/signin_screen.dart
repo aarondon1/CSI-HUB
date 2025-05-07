@@ -12,7 +12,7 @@ class SigninScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomScaffold(
       child: Align(
-        alignment: FractionalOffset(0.5, 0.005), // (0.5, 0.5) = Center of screen
+        alignment: FractionalOffset(0.5, 0.005),// where the logo is
         child: Column(
           mainAxisSize: MainAxisSize.min, // So it only takes up needed space
           children: [

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dolphin_finder/screens/settings_screen.dart';
 import 'package:dolphin_finder/screens/profile_screen.dart';
-import 'package:dolphin_finder/screens/create_screen.dart';
 import 'package:dolphin_finder/widgets/customnavbutton.dart';
+import '../supabase/supabase_client.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,30 +18,185 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color appBlue = Color(0xFF4A90E2);
 
   final TextEditingController searchController = TextEditingController();
-  final List<Map<String, dynamic>> posts = [
-    {
-      'username': 'Daniel',
-      'time': '2 hrs ago',
-      'description': 'Looking for need building a habit tracker app w/ AI, using firebase + python. Looking for: ML engineer 🧠, someone good w/ UI/UX design 🎨 i’m chill, just wanna build something cool over the next couple months\nhmu if you’re down!\nDiscord @danielgoodboy',
-      'likes': 6,
-      'liked': false,
-    },
-    {
-      'username': 'Emily',
-      'time': '1 hr ago',
-      'description': 'I am building a social study app w/ real-time collab features, using React + Firebase + python.\nLooking for: frontend dev (React) 💻 and a project manager.\nDiscord @emilyxoxo49\nEmail: emilyvegas2323@gmail.com',
-      'likes': 15,
-      'liked': false,
-    },
-  ];
+  List<Map<String, dynamic>> posts = [];
+  Map<String, Map<String, dynamic>> userProfiles = {};
+  bool isLoading = true;
+  StreamSubscription? likesSubscription;
+  StreamSubscription? notificationsSubscription;
 
-  void toggleLike(int index) {
-    setState(() {
-      final liked = posts[index]['liked'] ?? false;
-      posts[index]['liked'] = !liked;
-      posts[index]['likes'] += liked ? -1 : 1;
+  @override
+  void initState() {
+    super.initState();
+    _initializeData();
+  }
+
+  @override
+  void dispose() {
+    likesSubscription?.cancel();
+    notificationsSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeData() async {
+    await fetchPosts();
+    subscribeToLikes();
+    subscribeToNotifications();
+  }
+
+  void subscribeToLikes() {
+    final userId = SupabaseManager.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    likesSubscription = SupabaseManager.client
+        .from('likes')
+        .stream(primaryKey: ['id'])
+        .listen((event) {
+      fetchPosts();
+    }, onError: (error) {
+      print('Error in likes subscription: $error');
     });
   }
+
+  void subscribeToNotifications() {
+    final userId = SupabaseManager.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    notificationsSubscription = SupabaseManager.client
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .eq('to_user', userId)
+        .listen((event) {
+      print("🔔 New notification received!");
+    }, onError: (error) {
+      print('Error in notifications subscription: $error');
+    });
+  }
+
+  Future<void> fetchPosts() async {
+    try {
+      setState(() => isLoading = true);
+      final userId = SupabaseManager.client.auth.currentUser?.id;
+
+      final postsResponse = await SupabaseManager.client
+          .from('posts')
+          .select('*, likes(count), join_requests(count)')
+          .order('created_at', ascending: false);
+
+      final usersResponse = await SupabaseManager.client
+          .from('users_profile')
+          .select('id, name, profile_picture');
+
+      Set<dynamic> likedPostIds = {};
+
+      if (userId != null) {
+        final likesResponse = await SupabaseManager.client
+            .from('likes')
+            .select('post_id')
+            .eq('user_id', userId);
+
+        likedPostIds = likesResponse.map((like) => like['post_id']).toSet();
+      }
+
+      final profileMap = <String, Map<String, dynamic>>{};
+      for (final profile in usersResponse) {
+        profileMap[profile['id']] = {
+          'name': profile['name'] ?? 'Unknown',
+          'avatar': profile['profile_picture'],
+        };
+      }
+
+      setState(() {
+        posts = postsResponse.map((post) {
+          post['liked'] = likedPostIds.contains(post['id']);
+          post['likes'] = post['likes']?.isNotEmpty == true ? post['likes'][0]['count'] : 0;
+          post['join_requests'] = post['join_requests']?.isNotEmpty == true ? post['join_requests'][0]['count'] : 0;
+          return Map<String, dynamic>.from(post);
+        }).toList();
+        userProfiles = profileMap;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching posts or user profiles: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
+  String timeAgo(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return DateFormat('MMM d').format(date);
+  }
+
+  Future<void> toggleLike(int index) async {
+    final userId = SupabaseManager.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final postId = posts[index]['id'];
+    final postOwnerId = posts[index]['created_by'];
+    final liked = posts[index]['liked'] ?? false;
+
+    setState(() {
+
+      posts[index]['liked'] = !liked;
+      posts[index]['likes'] = (posts[index]['likes'] ?? 0) + (liked ? -1 : 1);
+    });
+
+    try {
+      if (liked) {
+        await SupabaseManager.client
+            .from('likes')
+            .delete()
+            .eq('user_id', userId)
+            .eq('post_id', postId);
+      } else {
+        await SupabaseManager.client.from('likes').insert({
+          'user_id': userId,
+          'post_id': postId,
+        });
+
+        if (userId != postOwnerId) {
+          await SupabaseManager.client.from('notifications').insert({
+            'type': 'like',
+            'from_user': userId,
+            'to_user': postOwnerId,
+            'post_id': postId,
+          });
+        }
+      }
+    } catch (e) {
+      print('Error toggling like: $e');
+      setState(() {
+        posts[index]['liked'] = liked;
+        posts[index]['likes'] = (posts[index]['likes'] ?? 0) + (liked ? 1 : -1);
+      });
+    }
+  }
+
+  void viewUserProfile(String userId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(userId: userId),
+      ),
+    );
+  }
+
+  Widget buildAvatar(String userId) {
+    final profile = userProfiles[userId];
+    final avatarUrl = profile?['avatar'];
+
+    return CircleAvatar(
+      backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+          ? NetworkImage(avatarUrl)
+          : const AssetImage('assets/user.png') as ImageProvider,
+      radius: 20,
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -68,12 +224,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           border: InputBorder.none,
                           hintText: 'Search',
                         ),
-                        onChanged: (value) {
-                          setState(() {});
-                        },
+                        onChanged: (value) => setState(() {}),
                       ),
                     ),
-                    IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+                    IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: () => setState(() {})),
                   ],
                 ),
               ),
@@ -111,15 +267,27 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: ListView.builder(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: posts.length,
                 itemBuilder: (context, index) {
                   final post = posts[index];
+                  final createdBy = post['created_by'];
+                  final userName = userProfiles[createdBy]?['name'] ?? 'Unknown';
+                  final postTime = DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now();
+
                   final query = searchController.text.toLowerCase();
-                  if (query.isNotEmpty && !post['description'].toLowerCase().contains(query)) {
-                    return const SizedBox.shrink();
-                  }
+                  final matchesSearch = query.isEmpty ||
+                      (post['description']?.toString().toLowerCase().contains(query) ?? false);
+
+                  final roles = List<String>.from(post['roles_needed'] ?? []);
+                  final matchesFilter = selectedFilters.isEmpty ||
+                      roles.any((r) => selectedFilters.contains(r));
+
+                  if (!matchesSearch || !matchesFilter) return const SizedBox.shrink();
+
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(16),
@@ -139,20 +307,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Row(
                           children: [
-                            const CircleAvatar(
-                              backgroundImage: AssetImage('assets/user.png'),
-                              radius: 20,
-                            ),
+                            buildAvatar(createdBy),
+
                             const SizedBox(width: 10),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  post['username'],
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                GestureDetector(
+                                  onTap: () => viewUserProfile(createdBy),
+                                  child: Text(
+                                    userName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
                                 ),
                                 Text(
-                                  post['time'],
+                                  timeAgo(postTime),
                                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                                 ),
                               ],
@@ -162,7 +331,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text(post['description']),
+                        Text(post['title'] ?? 'No Title',
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        Text(post['description'] ?? 'No Description'),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 6,
+                          children: roles.map((role) => Chip(label: Text(role))).toList(),
+                        ),
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: () {
@@ -184,12 +361,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Row(
                             children: [
                               Icon(
-                                (post['liked'] ?? false) ? Icons.favorite : Icons.favorite_border,
-                                color: (post['liked'] ?? false) ? Colors.red : Colors.black,
+                                (post['liked'] ?? false)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: (post['liked'] ?? false)
+                                    ? Colors.red
+                                    : Colors.black,
                                 size: 20,
                               ),
                               const SizedBox(width: 6),
-                              Text("${post['likes']} likes"),
+                              Text("${post['likes'] ?? 0} likes"),
                             ],
                           ),
                         ),
@@ -202,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 0),
+      bottomNavigationBar: const CustomNavButton(currentIndex: 0),
     );
   }
 }

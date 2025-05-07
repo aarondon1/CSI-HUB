@@ -4,10 +4,46 @@ import 'package:dolphin_finder/screens/create_screen.dart';
 import 'package:dolphin_finder/screens/settings_screen.dart';
 import 'package:dolphin_finder/widgets/customnavbutton.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+import '../supabase/supabase_client.dart';
+import 'EditProfileScreen.dart';
 
-  static const Color appBlue = Color(0xFF4A90E2);
+class ProfileScreen extends StatefulWidget {
+  final String userId;
+  const ProfileScreen({super.key, required this.userId});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoading = false;
+  Map<String, dynamic>? _profileData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await SupabaseManager.client
+          .from('users_profile')
+          .select()
+          .eq('id', widget.userId)
+          .single();
+
+      setState(() {
+        _profileData = response;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching profile: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,59 +54,53 @@ class ProfileScreen extends StatelessWidget {
         elevation: 0,
         title: const Text("Profile", style: TextStyle(color: Colors.black)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.black),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
+
+              // Refresh profile data if edit was successful
+              if (result == true) {
+                _loadProfile();
+              }
+            },
+          )
+        ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         child: Column(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 60,
-              backgroundImage: AssetImage('assets/user.png'),
+              backgroundImage: _profileData?['profile_picture'] != null && _profileData!['profile_picture'].isNotEmpty
+                  ? NetworkImage(_profileData!['profile_picture'])
+                  : const AssetImage('assets/user.png') as ImageProvider,
+              backgroundColor: Colors.grey[200],
             ),
             const SizedBox(height: 16),
-            const Text("Daniel", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              _profileData?['name'] ?? 'No Name',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 30),
-            buildInfoCard(
-              title: "Email Address",
-              content: "nickfrost@gmail.com",
-              onEdit: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Edit Email clicked")),
-                );
-              },
-            ),
-            buildInfoCard(
-              title: "Phone Number",
-              content: "123-456-7891",
-              onEdit: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Edit Phone clicked")),
-                );
-              },
-            ),
-            buildInfoCard(
-              title: "Instagram",
-              content: "https://www.instagram.com/CSI",
-              isLink: true,
-              onEdit: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Edit Instagram clicked")),
-                );
-              },
-            ),
+            buildInfoCard("Email Address", _profileData?['email'] ?? 'N/A'),
+            buildInfoCard("Instagram", _profileData?['instagram'] ?? 'N/A', isLink: true),
+            buildInfoCard("GitHub", _profileData?['github'] ?? 'N/A', isLink: true),
           ],
         ),
       ),
-        bottomNavigationBar: const CustomBottomNav(currentIndex: 3),
+      bottomNavigationBar: const CustomNavButton(currentIndex: 3),
     );
   }
 
-  Widget buildInfoCard({
-    required String title,
-    required String content,
-    required VoidCallback onEdit,
-    bool isLink = false,
-  }) {
+  Widget buildInfoCard(String title, String content, {bool isLink = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -111,10 +141,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: onEdit,
           ),
         ],
       ),
