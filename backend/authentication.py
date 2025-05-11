@@ -1,57 +1,68 @@
 import jwt
-from rest_framework.response import Response
-from functools import wraps
-import os
-from dotenv import load_dotenv
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+from django.conf import settings
 from .models import Profile
+import logging
 
-# Load environment variables
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-
-if not SUPABASE_JWT_SECRET:
-    raise ValueError("Missing SUPABASE_JWT_SECRET in environment variables")
-
-def authentication_required(view_func):
-    @wraps(view_func)
-    def _wrapped_view(view_instance, request, *args, **kwargs):
+class SupabaseAuthentication(BaseAuthentication):
+    """
+    Custom authentication class for validating Supabase JWT tokens.
+    """
+    
+    def authenticate(self, request):
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return Response({'error': 'Authorization header missing or invalid'}, status=401)
-
+            return None
+            
         token = auth_header.split(' ')[1]
-
+        
         try:
+            # Decode the JWT token using the SUPABASE_JWT_SECRET
             payload = jwt.decode(
                 token,
-                SUPABASE_JWT_SECRET,
+                settings.SUPABASE_JWT_SECRET,
                 algorithms=["HS256"],
-                options={"verify_aud": False}  # Ignore audience
+                options={"verify_aud": False}  # Ignore audience verification
             )
         except jwt.ExpiredSignatureError:
-            return Response({'error': 'Token expired'}, status=401)
-        except jwt.InvalidTokenError:
-            return Response({'error': 'Invalid token'}, status=401)
-
-        # Safely extract user_id
+            raise AuthenticationFailed('Token expired')
+        except jwt.InvalidTokenError as e:
+            raise AuthenticationFailed(f'Invalid token: {str(e)}')
+            
+        # Get user_id from the token (Supabase uses 'sub' for user ID)
         user_id = payload.get('sub')
         if not user_id:
-            return Response({'error': 'Invalid token payload: missing sub (user_id)'}, status=401)
-
+            raise AuthenticationFailed('Invalid token payload: missing sub (user_id)')
+            
+        # Get email from token if available
         email = payload.get('email', '')
-
-        # Fetch or create Profile
-        profile, created = Profile.objects.get_or_create(
-            user_id=user_id,
-            defaults={
-                'email': email,
-                'username': email.split('@')[0] if email else f'user_{user_id[:8]}'
-            }
-        )
-
-        request.user_info = payload
-        request.profile = profile
-        return view_func(view_instance, request, *args, **kwargs)
-
-    return _wrapped_view
+        
+        # Get or create profile based on the user_id
+        try:
+            profile, created = Profile.objects.get_or_create(
+                user_id=user_id,
+                defaults={
+                    'email': email,
+                    'username': email.split('@')[0] if email else f'user_{user_id[:8]}'
+                }
+            )
+            
+            # Add is_authenticated attribute to the profile
+            profile.is_authenticated = True
+            
+            # Add username attribute if it's not set
+            if not profile.username:
+                profile.username = email.split('@')[0] if email else f'user_{user_id[:8]}'
+                profile.save(update_fields=['username'])
+                
+        except Exception as e:
+            raise AuthenticationFailed(f'Profile error: {str(e)}')
+            
+        # Return profile and token payload
+        return (profile, payload)
+    
+    def authenticate_header(self, request):
+        return 'Bearer'

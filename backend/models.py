@@ -1,28 +1,41 @@
 from django.db import models
+from django.utils import timezone
 
 class Profile(models.Model):
-    user_id = models.CharField(max_length=255, unique=True) # Supabase UID
-    email = models.EmailField(unique=True, blank=True, null=True) # this is optional, as the user may not have an email associated with their profile
-    username = models.CharField(max_length=255)
+    user_id = models.CharField(max_length=255, primary_key=True)
+    username = models.CharField(max_length=100)
     bio = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
+    email = models.EmailField(blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.username
 
 class Project(models.Model):
-    user = models.ForeignKey(Profile, on_delete=models.CASCADE)
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=200)
     content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    
+    user_id = models.CharField(max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
 
 class JoinRequest(models.Model):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='sent_requests')
-    receiver = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='received_requests')
-    message = models.TextField(blank=True)
-    status = models.CharField(default='pending', choices=[
+    STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
-        ('declined', 'Declined')
-    ], max_length=20)
-    created_at = models.DateTimeField(auto_now_add=True)
+        ('declined', 'Declined'),
+    ]
+    
+    project_id = models.IntegerField()
+    sender_id = models.CharField(max_length=255)
+    receiver_id = models.CharField(max_length=255)
+    message = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Request for project {self.project_id} by {self.sender_id}"
