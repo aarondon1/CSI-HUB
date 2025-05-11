@@ -1,0 +1,89 @@
+<!-- This is the main HTML template for the Dolphin Finder API documentation. 
+ It provides a simple and clean layout to display the available API endpoints and their methods. The style is minimalistic, 
+ focusing on readability and clarity. The endpoints are categorized into sections for better organization. -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dolphin Finder API</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        color: #0066cc;
+      }
+      .endpoint {
+        background-color: #f5f5f5;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+      }
+      .method {
+        font-weight: bold;
+        color: #009900;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dolphin Finder API</h1>
+    <p>Welcome to the Dolphin Finder API. Below are the available endpoints:</p>
+
+    <h2>Profile Endpoints</h2>
+    <div class="endpoint">
+      <p>
+        <span class="method">GET</span> /profile/&lt;user_id&gt;/ - Get a user
+        profile
+      </p>
+      <p>
+        <span class="method">POST</span> /create-profile/ - Create a new profile
+      </p>
+      <p>
+        <span class="method">PATCH</span> /profile/&lt;user_id&gt;/ - Update a
+        profile
+      </p>
+      <p><span class="method">GET</span> /me/ - Get current user profile</p>
+    </div>
+
+    <h2>Project Endpoints</h2>
+    <div class="endpoint">
+      <p>
+        <span class="method">GET</span> /homepage/ - Get all projects (with
+        optional ?query= parameter)
+      </p>
+      <p>
+        <span class="method">POST</span> /create-project/ - Create a new project
+      </p>
+      <p>
+        <span class="method">GET/PUT/DELETE</span> /projects/&lt;project_id&gt;/
+        - Get, update, or delete a project
+      </p>
+      <p>
+        <span class="method">GET</span> /user-projects/&lt;user_id&gt;/ - Get
+        projects by a specific user
+      </p>
+    </div>
+
+    <h2>Join Request Endpoints</h2>
+    <div class="endpoint">
+      <p>
+        <span class="method">POST</span> /join-request/ - Create a join request
+      </p>
+      <p>
+        <span class="method">PATCH</span>
+        /join-request/&lt;request_id&gt;/status/ - Update join request status
+      </p>
+      <p>
+        <span class="method">GET</span> /join-request/user/&lt;user_id&gt;/ -
+        Get received join requests
+      </p>
+      <p>
+        <span class="method">GET</span> /join-request/sent/ - Get sent join
+        requests
+      </p>
+    </div>
+  </body>
+</html>

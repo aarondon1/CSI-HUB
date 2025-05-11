@@ -11,6 +11,15 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import logging.config
+import jwt
+import psycopg2
+import os
+from datetime import timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,13 +28,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
+if not SUPABASE_JWT_SECRET:
+    raise ValueError("Missing SUPABASE_JWT_SECRET")
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = Secret_key
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("Missing SECRET_KEY in environment variables")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True  # Set to False in production
 
-ALLOWED_HOSTS = []
+# Allowed hosts configuration - need to be configured for production to only allow specific hosts:
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# SECURITY WARNING: define the correct hosts in production!
+
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.0.2.2']
 
 
 # Application definition
@@ -37,6 +59,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'backend',  # Custom app for the backend
+    'rest_framework',  # Django REST framework for API development
+    'rest_framework.authtoken',  # Token authentication for REST framework
+    'corsheaders',  # CORS headers for cross-origin requests
 ]
 
 MIDDLEWARE = [
@@ -47,6 +74,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware
+    'backend.middleware.RequestLoggingMiddleware',  # Custom middleware for logging requests and responses
+    #'backend.middleware.JWTDebugMiddleware',  # Custom middleware for JWT debugging
 ]
 
 ROOT_URLCONF = 'DolphinFinder_project.urls'
@@ -54,10 +84,11 @@ ROOT_URLCONF = 'DolphinFinder_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'backend/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -72,10 +103,23 @@ WSGI_APPLICATION = 'DolphinFinder_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
+# Get environment variables
+host_ID = os.getenv("host_ID")
+supabase_password = os.getenv("supabase_password")
+
+# Check if the required environment variables are set, if not, raise an error
+if not host_ID or not supabase_password:
+    raise ValueError("Missing required environment variables in the .env file: host_ID or supabase_password")
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',  # PostgreSQL database engine
+        'HOST': f'db.{host_ID}.supabase.co',  # Supabase database host
+        'NAME': 'postgres',  # Database name
+        'USER': 'postgres',  # Database user
+        'PASSWORD': supabase_password,  # Database password
+        'PORT': '5432',  # Default PostgreSQL port
     }
 }
 
@@ -120,3 +164,125 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOW_ALL_ORIGINS = True # Allow all origins for CORS requests
+
+# Django REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'backend.authentication.SupabaseAuthentication',  # Custom authentication class for Supabase JWT
+        'rest_framework.authentication.TokenAuthentication', # Token authentication for API requests
+        'rest_framework.authentication.SessionAuthentication',  # Session authentication for web requests
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'EXCEPTION_HANDLER': 'backend.utils.custom_exception_handler',
+}
+
+# JWT settings for Supabase integration
+SIMPLE_JWT = {
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SUPABASE_JWT_SECRET,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'sub',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'JTI_CLAIM': 'jti',
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Adjust as needed
+}
+
+# Additional CORS settings
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+
+
+# Add detailed logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'backend': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+}
+# ignore this for now:
+
+# # ensures cookies are only sent over HTTPS connections, preventing interception in plaintext
+# CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = True
+
+# # redirect all HTTP traffic to HTTPS, ensuring secure connections
+# # uncomment this line when deploying to production, for local development, you can keep it commented
+# #SECURE_SSL_REDIRECT = True
+
+
+# # HTTPS and secure cookie settings
+# if not DEBUG:  # Only enforce these settings in production
+#     CSRF_COOKIE_SECURE = True
+#     SESSION_COOKIE_SECURE = True
+#     SECURE_SSL_REDIRECT = True
+# else:  # Disable these settings in development
+#     CSRF_COOKIE_SECURE = False
+#     SESSION_COOKIE_SECURE = False
+#     SECURE_SSL_REDIRECT = False
